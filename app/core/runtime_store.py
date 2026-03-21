@@ -62,27 +62,18 @@ class RuntimeStore:
         path.parent.mkdir(parents=True, exist_ok=True)
         urlretrieve(url, path)
 
-    def recommend(self, seed_movie_ids, top_k, search_k):
+    def search(self, query_vector, excluded_ids, top_k, search_k):
         if not self.movie_ids:
             return []
 
-        known_seed_ids = [movie_id for movie_id in seed_movie_ids if movie_id in self.movie_vectors]
-
-        if not known_seed_ids:
-            return self.movie_ids[:top_k]
-
-        vectors = [self.movie_vectors[movie_id] for movie_id in known_seed_ids]
-        query_vector = np.mean(vectors, axis=0).astype("float32")
-
         norm = np.linalg.norm(query_vector)
         if norm == 0:
-            return self.movie_ids[:top_k]
+            return self.fallback(top_k=top_k, excluded_ids=excluded_ids)
 
-        query_vector = query_vector / norm
+        query_vector = query_vector.astype("float32") / norm
         _, indices = self.index.search(np.array([query_vector], dtype="float32"), search_k)
 
         recommendations = []
-        excluded_ids = set(known_seed_ids)
 
         for idx in indices[0]:
             if idx < 0 or idx >= len(self.movie_ids):
@@ -98,13 +89,46 @@ class RuntimeStore:
                 break
 
         if len(recommendations) < top_k:
-            for movie_id in self.movie_ids:
-                if movie_id in excluded_ids or movie_id in recommendations:
-                    continue
-
-                recommendations.append(movie_id)
-
-                if len(recommendations) == top_k:
-                    break
+            recommendations.extend(
+                self.fallback(
+                    top_k=top_k - len(recommendations),
+                    excluded_ids=excluded_ids.union(recommendations),
+                )
+            )
 
         return recommendations
+
+    def fallback(self, top_k, excluded_ids=None):
+        excluded_ids = excluded_ids or set()
+
+        recommendations = []
+
+        for movie_id in self.movie_ids:
+            if movie_id in excluded_ids:
+                continue
+
+            recommendations.append(movie_id)
+
+            if len(recommendations) == top_k:
+                break
+
+        return recommendations
+
+    def recommend(self, seed_movie_ids, top_k, search_k):
+        if not self.movie_ids:
+            return []
+
+        known_seed_ids = [movie_id for movie_id in seed_movie_ids if movie_id in self.movie_vectors]
+
+        if not known_seed_ids:
+            return self.fallback(top_k=top_k)
+
+        vectors = [self.movie_vectors[movie_id] for movie_id in known_seed_ids]
+        query_vector = np.mean(vectors, axis=0).astype("float32")
+
+        return self.search(
+            query_vector=query_vector,
+            excluded_ids=set(known_seed_ids),
+            top_k=top_k,
+            search_k=search_k,
+        )
