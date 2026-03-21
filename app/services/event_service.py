@@ -1,8 +1,14 @@
-from app.repositories.event_repository import EventRepository
+import uuid
 
 
-def log_user_event(db, event_data):
+def log_user_event(event_data):
+    event = {
+        "id": str(uuid.uuid4()),
+        "user_id": event_data.user_id,
+        "movie_id": event_data.movie_id,
+        "event_type": event_data.event_type,
+    }
 
-    event = EventRepository.log_event(db, event_data)
+    print(f"[EVENT] {event}")
 
     return event
