@@ -36,7 +36,7 @@ def add_movie(req: MovieIngestRequest, db: Session = Depends(get_db)):
 
 #     return RecommendResponse(recommendations=movies)
 
-@router.post("/v1/recommend", response_model=RecommendResponse)
+@router.post("/recommendations", response_model=RecommendResponse)
 def recommend(req: RecommendRequest, db: Session = Depends(get_db)):
 
     movies = get_recommendations(req.user_id, db)
