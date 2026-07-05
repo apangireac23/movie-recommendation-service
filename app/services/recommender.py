@@ -1,10 +1,23 @@
 import numpy as np
 from app.services.taste_service import compute_user_taste
-from app.ml.faiss_index import FaissIndex
 from app.repositories.event_repository import EventRepository
 from app.core.constants import TOP_K, FAISS_CANDIDATES, POPULARITY_POOL
 
-faiss_index = FaissIndex()
+# Shared singleton — populated at startup by `app.core.startup` and read
+# here. Imported from `runtime_store` to avoid a circular import with
+# `app.main`.
+from app.core.runtime_store import faiss_index
+
+
+class FaissNotReadyError(Exception):
+    """Raised when the FAISS index is empty.
+
+    This is a hard failure (translated to HTTP 503 by the FastAPI
+    exception handler in `app.main`) — silently falling back to popular
+    movies was masking the root-cause bug. The other short-circuits
+    below (no_user_history, zero_vector) stay on the popularity path
+    because a cold start is a legitimate product case.
+    """
 
 
 def get_recommendations(user_id, db):
@@ -14,7 +27,7 @@ def get_recommendations(user_id, db):
     # --- Step 1: Check FAISS readiness ---
     if len(faiss_index.id_map) == 0:
         decision_path.append("faiss_not_ready")
-        return fallback_only(user_id, db, decision_path)
+        raise FaissNotReadyError("FAISS index is empty; service not ready")
 
     # --- Step 2: Compute taste ---
     taste_vector = compute_user_taste(db, user_id)
