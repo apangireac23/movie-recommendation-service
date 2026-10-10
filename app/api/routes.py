@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.schemas import RecommendRequest, RecommendResponse, MovieIngestRequest, UserEventRequest
+from app.api.schemas import (
+    EventsRecommendationRequest,
+    MovieIngestRequest,
+    RecommendRequest,
+    RecommendResponse,
+    UserEventRequest,
+)
 from app.services.recommender import get_recommendations
+from app.services.event_based_recommender import get_recommendations_from_events
 from app.services.movie_service import ingest_movie
 from app.core.database import SessionLocal
 from app.services.event_service import log_user_event
@@ -40,6 +47,15 @@ def add_movie(req: MovieIngestRequest, db: Session = Depends(get_db)):
 def recommend(req: RecommendRequest, db: Session = Depends(get_db)):
 
     movies = get_recommendations(req.user_id, db)
+
+    return RecommendResponse(recommendations=movies)
+
+
+@router.post("/v1/recommendations/from-events", response_model=RecommendResponse)
+def recommend_from_events(req: EventsRecommendationRequest):
+    """Recommend from caller-provided events without any database lookup."""
+
+    movies = get_recommendations_from_events(req.events, req.limit)
 
     return RecommendResponse(recommendations=movies)
 
