@@ -41,3 +41,18 @@ positive, stronger-positive, and negative weights respectively.
 
 `GET /health` returns `{"status":"ok"}` for deployment probes. If artifacts
 are missing or inconsistent, the recommendation endpoint returns HTTP 503.
+
+## Build a catalogue artifact
+
+`catalogue/movies.csv` is the manually maintained source catalogue. The API
+does not read it. After updating that file, build a new artifact version:
+
+```bash
+pip install -r requirements-offline.txt
+python scripts/build_artifacts.py --version v1
+```
+
+The command writes `artifacts/v1/` with a FAISS index, movie-id map, and a
+manifest that records the source hash, embedding model, dimensions, and movie
+count. By default it only uses a cached embedding model. Pass
+`--allow-download` only when intentionally allowing the builder to download it.
