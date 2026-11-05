@@ -11,17 +11,17 @@ import numpy as np
 from app.core.constants import FAISS_CANDIDATES
 from app.core.event_weights import EVENT_WEIGHTS
 from app.core.runtime_store import faiss_index
-from app.services.recommender import FaissNotReadyError
+from app.ml.faiss_index import ArtifactNotReadyError
 
 
 def get_recommendations_from_events(events, limit: int):
     """Return recommendations from events supplied in the current request.
 
-    Unknown movie ids are ignored.  An empty or unusable event list returns an
-    empty result instead of using the database-backed popularity fallback.
+    Unknown movie ids are ignored. An empty or unusable event list returns an
+    empty result.
     """
     if not faiss_index.id_map:
-        raise FaissNotReadyError("FAISS index is empty; service not ready")
+        raise ArtifactNotReadyError("recommendation artifacts are not ready")
 
     id_to_position = {
         movie_id: position

@@ -1,7 +1,8 @@
-import faiss
-import numpy as np
 import json
 import os
+
+import faiss
+import numpy as np
 
 INDEX_PATH = "app/data/movie_index.bin"
 MAP_PATH = "app/data/movie_index_map.json"
@@ -10,10 +11,16 @@ DIMENSION = 384
 
 
 class FaissIndex:
+    """Read-only view of the offline-generated recommendation artifacts."""
 
     def __init__(self):
         self.index = self._load_index()
         self.id_map = self._load_id_map()
+        if self.index.ntotal != len(self.id_map):
+            # An incomplete artifact pair must never produce incorrectly
+            # associated movie ids. Treat it as unavailable instead.
+            self.index = faiss.IndexFlatIP(DIMENSION)
+            self.id_map = []
 
     def _load_index(self):
         if not os.path.exists(INDEX_PATH) or os.path.getsize(INDEX_PATH) == 0:
@@ -36,19 +43,6 @@ class FaissIndex:
         except json.JSONDecodeError:
             return []
 
-    def add_movie(self, movie_id, embedding):
-
-        if movie_id in self.id_map:
-            return
-
-        vector = np.array([embedding]).astype("float32")
-
-        self.index.add(vector)
-
-        self.id_map.append(movie_id)
-
-        self.save()
-
     def search(self, query_vector, k=10):
 
         if len(self.id_map) == 0:
@@ -61,16 +55,11 @@ class FaissIndex:
         results = []
 
         for idx in indices[0]:
-            if idx < len(self.id_map):
+            if 0 <= idx < len(self.id_map):
                 results.append(self.id_map[idx])
 
         return results
-    
 
-    def save(self):
-        os.makedirs(os.path.dirname(INDEX_PATH), exist_ok=True)
 
-        faiss.write_index(self.index, INDEX_PATH)
-
-        with open(MAP_PATH, "w") as f:
-            json.dump(self.id_map, f)
+class ArtifactNotReadyError(Exception):
+    """Raised when the offline-generated artifacts cannot be used."""
