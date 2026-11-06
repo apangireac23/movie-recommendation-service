@@ -85,3 +85,23 @@ python scripts/evaluate_recommendations.py --min-mean-recall 0.5
 
 The evaluation cases are a small starting baseline. Add human-reviewed relevant
 movie ids before using its score to approve a ranking change.
+
+## Run in a container
+
+The image contains only the API and its runtime dependencies. Mount one
+artifact release read-only when starting it; the CSV catalogue and offline
+builder are not included.
+
+```powershell
+docker build --tag movie-recommendation-service:local .
+
+$artifactPath = (Resolve-Path .\artifacts\v1).Path
+docker run --rm --publish 8000:8000 `
+  --mount "type=bind,source=$artifactPath,target=/artifacts/v1,readonly" `
+  --env ARTIFACT_DIR=/artifacts/v1 `
+  movie-recommendation-service:local
+```
+
+Verify the running container with `http://localhost:8000/health`. To use a new
+catalogue release, mount `artifacts/v2` and set `ARTIFACT_DIR=/artifacts/v2`,
+then start a new container.
