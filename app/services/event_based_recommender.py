@@ -20,8 +20,10 @@ def get_recommendations_from_events(events, limit: int):
     Unknown movie ids are ignored. An empty or unusable event list returns an
     empty result.
     """
-    if not faiss_index.id_map:
-        raise ArtifactNotReadyError("recommendation artifacts are not ready")
+    if not faiss_index.is_ready:
+        raise ArtifactNotReadyError(
+            f"recommendation artifacts are not ready: {faiss_index.unavailable_reason}"
+        )
 
     id_to_position = {
         movie_id: position

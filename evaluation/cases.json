@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "science-fiction preferences",
+      "events": [
+        {"movie_id": "tmdb_27205", "event_type": "like"},
+        {"movie_id": "tmdb_157336", "event_type": "like"}
+      ],
+      "relevant_movie_ids": [
+        "tmdb_70981",
+        "tmdb_14139",
+        "tmdb_431",
+        "tmdb_3509"
+      ]
+    },
+    {
+      "name": "crime-drama preferences",
+      "events": [
+        {"movie_id": "tmdb_550", "event_type": "like"},
+        {"movie_id": "tmdb_680", "event_type": "like"}
+      ],
+      "relevant_movie_ids": [
+        "tmdb_1578",
+        "tmdb_73567",
+        "tmdb_176"
+      ]
+    }
+  ]
+}

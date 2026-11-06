@@ -7,13 +7,16 @@ to PostgreSQL and does not persist users or events.
 
 ## Run locally
 
-The service requires a matching artifact pair in `app/data/`:
+The service loads one complete artifact release. By default it uses
+`artifacts/v1/`; configure another release with `ARTIFACT_DIR`.
 
 - `movie_index.bin` — FAISS inner-product index
 - `movie_index_map.json` — movie ids in FAISS-vector order
+- `manifest.json` — version, counts, and integrity hashes
 
 ```bash
 pip install -r requirements.txt
+$env:ARTIFACT_DIR = "artifacts/v1"
 uvicorn app.main:app --reload
 ```
 
@@ -39,8 +42,9 @@ positive, stronger-positive, and negative weights respectively.
 {"recommendations": ["tmdb_...", "tmdb_..."]}
 ```
 
-`GET /health` returns `{"status":"ok"}` for deployment probes. If artifacts
-are missing or inconsistent, the recommendation endpoint returns HTTP 503.
+`GET /health` reports the loaded artifact version and movie count. It and the
+recommendation endpoint return HTTP 503 if the configured release is missing
+or inconsistent.
 
 ## Build a catalogue artifact
 
@@ -56,3 +60,28 @@ The command writes `artifacts/v1/` with a FAISS index, movie-id map, and a
 manifest that records the source hash, embedding model, dimensions, and movie
 count. By default it only uses a cached embedding model. Pass
 `--allow-download` only when intentionally allowing the builder to download it.
+
+Validate the CSV before building. The command fails for missing required
+columns, duplicate headers, blank or duplicate ids, and when more than 1% of
+rows lack a title or overview:
+
+```bash
+python scripts/build_artifacts.py --validate-only
+```
+
+## Test and evaluate retrieval
+
+Run automated correctness tests:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Run the hand-curated retrieval evaluation against the selected artifact release:
+
+```bash
+python scripts/evaluate_recommendations.py --min-mean-recall 0.5
+```
+
+The evaluation cases are a small starting baseline. Add human-reviewed relevant
+movie ids before using its score to approve a ranking change.
